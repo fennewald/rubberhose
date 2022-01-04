@@ -16,13 +16,31 @@ pub struct Config {
     pub sector_size: u64,
 }
 
-// A device builder struct
+/// A device builder struct
 pub struct DeviceBuilder {
     device: Option<&'static str>,
     sector_size: Option<u64>,
+    aspects: Option<Vec<String>>,
 }
 
 impl DeviceBuilder {
+    pub fn new() -> DeviceBuilder {
+        DeviceBuilder {
+            device: None,
+            sector_size: None,
+            aspects: None,
+        }
+    }
+
+    pub fn with_aspect(mut self, aspect: String) -> DeviceBuilder {
+        if self.aspects.is_none() {
+            self.aspects = Some(vec![aspect]);
+        } else {
+            self.aspects.unwrap().push(aspect);
+        }
+        self
+    }
+
     pub fn device_name(mut self, name: &'static str) -> DeviceBuilder {
         self.device = Some(name);
         self
@@ -34,8 +52,10 @@ impl DeviceBuilder {
     }
 
     /// Set the aspect
-    pub fn from_file(mut self, file: File) -> DeviceBuilder {
-        self
+    pub fn from_file(mut self, file: File) -> Device {
+        Device {
+            aspects: HashMap::new(),
+        }
     }
 }
 
