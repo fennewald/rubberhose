@@ -1,6 +1,17 @@
-mod device;
+extern crate openssl;
+extern crate aes;
 
-use device::Device;
+mod device;
+mod keyword;
+mod aspect;
+mod sector;
+mod block;
+mod mem;
+
+pub use keyword::{Keyword, Key};
+pub use device::{Device, DeviceBuilder};
+pub use block::{Block,BLOCK_SIZE};
+
 
 /*
 type DevicePointer = u32;
@@ -31,7 +42,18 @@ impl Device {
 
 }
 */
+
+fn demo_keyword() {
+    let mut line = String::new();
+    print!("Keyword: ");
+    std::io::stdin().read_line(&mut line).unwrap();
+    line.truncate(line.len()-1);
+    let k = keyword::Keyword::new(line);
+    println!("({:08x}){} -> {}", k.id(), k.text(), k.pretty_hash());
+}
+
 fn main() {
-    let d = Device::new_from_file("test.bin");
-    println!("Device type: {}", d.config.device);
+    loop {
+        demo_keyword();
+    }
 }
