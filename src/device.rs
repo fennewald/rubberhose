@@ -1,5 +1,5 @@
 use crate::mem::RAM;
-use crate::{Block, BLOCK_SIZE, Keyword};
+use crate::{Address, Block, BLOCK_SIZE, Keyword};
 
 use std::collections::{HashMap, BTreeSet};
 use std::io::{Read, Seek};
@@ -9,7 +9,6 @@ use std::path::Path;
 
 /// A filesystem device
 pub struct Device {
-    seed_blocks: BTreeSet<u64>,
     aspects: HashMap<Keyword, usize>,
     reader: Box<dyn Read>,
     pub config: Config,
@@ -101,17 +100,19 @@ impl Device {
     pub fn create_aspect(&mut self, keyword: &str) {
         let keyword = Keyword::new(keyword.to_string());
         let index = self.keyword_head_index(&keyword);
+        // Encode seed block
+        let seed_block = self.read_block(index);
     }
 
     pub fn n_sectors(&self) -> u64 {
         10
     }
 
-    pub fn keyword_head_index(&mut self, keyword: &Keyword) -> u64 {
-        keyword.id() % self.n_sectors()
+    pub fn keyword_head_index(&mut self, keyword: &Keyword) -> Address {
+        (keyword.lower_64() % self.n_sectors()).into()
     }
 
-    pub fn read_block(&mut self, index: u64) -> Block {
+    pub fn read_block(&mut self, index: Address) -> Block {
         let block = [0; BLOCK_SIZE];
         // TODO, seek and read
         return block;

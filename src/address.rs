@@ -1,19 +1,14 @@
-
-
 /// An internal address in the filesystem
 pub struct Address(u64);
 
 impl Address {
-    /// First 4
-    pub fn super_block_index(&self) -> u8 {
-
-    }
-
-    pub fn
-
     pub fn byte_index(&self) -> u8 {
-        self.0 & 0b0111
+        (self.0 & 0b0111) as u8
     }
+}
 
-    pub fn 
+impl From<u64> for Address {
+    fn from(n: u64) -> Address {
+        Address(n)
+    }
 }
