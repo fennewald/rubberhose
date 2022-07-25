@@ -11,27 +11,19 @@ pub enum Error {
     BadSuperBlock,
 }
 
+/// On-disk representation of a saved aspect
+struct AspectSeed {
+    master_key: u8,
+    checksum: u32,
+}
+
 pub struct Aspect<'a> {
     keyword: &'a Keyword,
-    #[cfg(feature = "cache_address_table")]
-    seed_address: Address,
     addresses: Vec<Address>,
 }
 
 impl<'a> Aspect<'_> {
-    pub fn read_disk(keyword: &'a Keyword, disk: &mut Device) -> Result<Aspect<'a>, Error> {
-        let seed_index = disk.keyword_head_index(keyword);
-        let mut seed_block: Block = disk.read_block(seed_index);
-        for i in (0..BLOCK_SIZE).step_by(128) {
-            let magic =
-                u64::from_be_bytes(seed_block[i..i+32].try_into().unwrap());
-            if magic == SEED_FLAG {
-                let head_index =
-                    u64::from_be_bytes(seed_block[i..i+32].try_into().unwrap());
-            }
-        }
-        Err(Error::SeedNotFound)
-    }
+    pub fn load_aspect(keyword: &Keyword, extent: &
 
     fn read(&self, address: Address, length: u64) {
         // Read the block
