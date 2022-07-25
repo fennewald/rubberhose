@@ -1,6 +1,5 @@
-use crate::{Address, Block, BLOCK_SIZE, Device, Keyword};
-
-pub const SEED_FLAG: u64 = 0xc0debeefc0debeef;
+use crate::{Key, Keyword, ExtentInfo, Block, Extent};
+use std::sync::{Arc,RwLock, Mutex};
 
 pub enum Error {
     /// The seed could not be located in the seed block
@@ -18,18 +17,34 @@ struct AspectSeed {
 }
 
 pub struct Aspect<'a> {
-    keyword: &'a Keyword,
-    addresses: Vec<Address>,
+    extent_info: &'a ExtentInfo,
+    extent: Arc<Mutex<Extent>>,
+    keyword: Keyword,
 }
+
 
 impl<'a> Aspect<'_> {
-    pub fn load_aspect(keyword: &Keyword, extent: &
+    /// Return the block key for the given block id
+    pub fn block_key(&self, block_id: u64) -> Key {
+        todo!()
+    }
 
-    fn read(&self, address: Address, length: u64) {
-        // Read the block
-        // decrypt it
-        // cut out section
+    /// Migrate a block from old_block_id to new_block_id
+    pub fn move_block(&mut self, old_block_id: u64, new_block_id: u64) -> Result<(), Error> {
+        log::info!("Moving block {} to {}", old_block_id, new_block_id);
+        let block_content = self.read_block(old_block_id)?;
+        self.write_block(new_block_id, block_content);
+        Ok(())
+    }
+
+    fn write_block(&mut self, block_id: u64, content: u8) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn read_block(&self, block_id: u64) -> Result<Block, Error> {
+        let mut extent = self.extent.lock().unwrap();
+        let raw_block = extent.read_block(block_id);
+        let block = raw_block.decrypt(self.block_key(block_id));
+        todo!()
     }
 }
-
-

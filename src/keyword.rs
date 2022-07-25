@@ -10,16 +10,11 @@ pub struct Keyword {
     hash: Key,
 }
 
-/// Key the given string
-fn hash(text: &str) -> Key {
-    sha256(text.as_bytes())
-}
-
 impl Keyword {
     /// Create a new keyword from a given string
     pub fn new(text: String) -> Keyword {
         Keyword {
-            hash: hash(&text),
+            hash: sha256(text.as_bytes()),
             text: text,
         }
     }
@@ -32,10 +27,14 @@ impl Keyword {
         &self.hash
     }
 
+    pub fn seed_index(&self, n_blocks: u64) -> u64 {
+        self.lower_64() % n_blocks
+    }
+
     /// A pretty form of the hash
     pub fn pretty_hash(&self) -> String {
         format!(
-            "{:04x} {:04x} {:04x} {:04x} {:04x} {:04x} {:04x} {:04x}",
+            "{:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x}",
             self.slice_int::<u32>(0x00).unwrap(),
             self.slice_int::<u32>(0x04).unwrap(),
             self.slice_int::<u32>(0x08).unwrap(),
@@ -166,6 +165,7 @@ mod tests {
         let k = fingerprint_hash();
         for i in 0..32 {
             assert_eq!(i as u8, k.hash[i]);
+            assert_eq!(i as u8, k.slice_int::<u8>(i).unwrap());
         }
     }
 
