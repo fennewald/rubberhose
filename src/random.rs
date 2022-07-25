@@ -1,6 +1,7 @@
 use openssl::rand::rand_bytes;
 
 const RAND_BUF_SIZE: usize = 1024;
+// TODO replace with static buffer
 static RAND_BUF: Vec<u8> = vec![0; RAND_BUF_SIZE];
 
 fn refill_buffer() {

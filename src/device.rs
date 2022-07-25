@@ -9,7 +9,9 @@ use std::path::Path;
 
 /// A filesystem device
 pub struct Device {
-    aspects: HashMap<Keyword, usize>,
+    /// A set of all blocks in the filesystem that are seeds
+    seed_blocks: BTreeSet<Address>,
+    aspects: HashMap<Keyword, Address>,
     reader: Box<dyn Read>,
     pub config: Config,
 }
@@ -62,6 +64,7 @@ impl DeviceBuilder {
     /// Set the aspect
     pub fn from_file(mut self, file: File) -> Device {
         Device {
+            seed_blocks: BTreeSet::new(),
             aspects: HashMap::new(),
             reader: Box::new(file),
             config: Config {
@@ -96,10 +99,24 @@ impl DeviceBuilder {
 }
 
 impl Device {
+    /// Load the seed block specified by keyword
+    /// This fully decrypts the block
+    fn load_seed_block(&mut self, keyword: &Keyword) -> Block {
+        let index = self.keyword_seed_index(&keyword);
+        let mut block = self.read_block(index);
+        block.xor_key(keyword.hash());
+        return block;
+    }
+
+    /// Load the aspect given
+    pub fn load_aspect(&mut self, keyword: Keyword) {
+        let seed_block = self.load_seed_block(&keyword);
+    }
+
     /// Create an aspect with the given name
     pub fn create_aspect(&mut self, keyword: &str) {
         let keyword = Keyword::new(keyword.to_string());
-        let index = self.keyword_head_index(&keyword);
+        let index = self.keyword_seed_index(&keyword);
         // Encode seed block
         let seed_block = self.read_block(index);
     }
@@ -108,13 +125,11 @@ impl Device {
         10
     }
 
-    pub fn keyword_head_index(&mut self, keyword: &Keyword) -> Address {
+    pub fn keyword_seed_index(&mut self, keyword: &Keyword) -> Address {
         (keyword.lower_64() % self.n_sectors()).into()
     }
 
     pub fn read_block(&mut self, index: Address) -> Block {
-        let block = [0; BLOCK_SIZE];
-        // TODO, seek and read
-        return block;
+        return Block::default();
     }
 }

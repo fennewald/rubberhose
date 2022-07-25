@@ -1,27 +1,20 @@
 extern crate openssl;
 extern crate aes;
+extern crate bitvec;
+#[macro_use]
+extern crate log;
 
-mod address;
-mod block;
-mod device;
-mod keyword;
 mod aspect;
-mod mem;
+pub mod block;
+mod keyword;
+mod extent;
 
-pub use address::Address;
-pub use block::{Block,BLOCK_SIZE};
-pub use device::{Device, DeviceBuilder};
+pub use aspect::Aspect;
+pub use block::{EncryptedBlock, Block};
 pub use keyword::{Keyword, Key};
-
-fn demo_keyword() {
-    let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
-    line.truncate(line.len()-1);
-    let k = keyword::Keyword::new(line);
-    println!("{}", k);
-}
+pub use extent::{Extent, ExtentInfo};
 
 fn main() {
-    let k = Keyword::new("test".to_string());
-    println!("Lower 64: {:016x}", k.lower_64());
+    env_logger::init();
+    let e = Extent::new("extent-0.bin", 10);
 }
