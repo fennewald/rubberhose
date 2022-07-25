@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{self, BufWriter, SeekFrom, prelude::*};
 use std::sync::{self, Arc, Mutex, PoisonError, MutexGuard};
 use bitvec::prelude::BitVec;
-use crate::{Aspect, Block, EncryptedBlock, Keyword};
+use crate::{Address, Aspect, Block, EncryptedBlock, Keyword};
 
 #[derive(Debug)]
 pub enum Error {
@@ -39,7 +39,7 @@ impl ExtentHandle {
         self.handle.lock()
     }
 
-    pub fn read_block(&mut self, block_id: u64) -> Result<EncryptedBlock, Error> {
+    pub fn read_block(&mut self, block_id: Address<Extent>) -> Result<EncryptedBlock, Error> {
         let mut extent = self.handle.lock()?;
         extent.seek(block_id);
         let mut buffer = EncryptedBlock::new();
@@ -72,9 +72,9 @@ impl Extent {
     }
 
     /// Seek to the given block id
-    fn seek(&mut self, block_id: u64) {
+    fn seek(&mut self, block_id: Address<Extent>) {
         // TODO handle failure
-        self.f.seek(SeekFrom::Start(block_id * Block::size() as u64));
+        self.f.seek(SeekFrom::Start(*block_id * Block::size() as u64));
     }
 
     /// Allocates a new block, marking it as in use

@@ -19,6 +19,6 @@ fn main() {
     env_logger::init();
     let e = Extent::load("extent-0.bin");
     let mut h = e.to_handle();
-    let b = h.read_block(0).unwrap();
+    let b = h.read_block(0.into()).unwrap();
     dbg!(b);
 }

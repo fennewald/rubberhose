@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 use std::fmt;
 
 pub struct Address<T> {
@@ -21,3 +22,15 @@ impl<T> From<u64> for Address<T> {
     }
 }
 
+impl<T> Deref for Address<T> {
+    type Target = u64;
+    fn deref(&self) -> &Self::Target {
+        &self.val
+    }
+}
+
+impl<T> DerefMut for Address<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.val
+    }
+}
