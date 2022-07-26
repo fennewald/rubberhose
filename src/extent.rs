@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::io::{self, BufWriter, SeekFrom, prelude::*};
-use std::sync::{self, Arc, Mutex, PoisonError, MutexGuard};
-use bitvec::prelude::BitVec;
 use crate::{Address, Aspect, Block, EncryptedBlock, Keyword};
+use bitvec::prelude::BitVec;
+use std::fs::File;
+use std::io::{self, prelude::*, BufWriter, SeekFrom};
+use std::sync::{self, Arc, Mutex, MutexGuard, PoisonError};
 
 #[derive(Debug)]
 pub enum Error {
@@ -34,12 +34,18 @@ impl ExtentHandle {
         self.n_blocks
     }
 
+    /// Create a new aspect on disk
+    pub fn create_aspect(&self, keyword: Keyword) -> Aspect {
+        let mut aspect = Aspect::new(&self, keyword);
+        aspect.write_seed_block()
+    }
+
     /// Return a handle to the underlying extent object
-    pub fn lock(&mut self) -> Result<MutexGuard<'_, Extent>, PoisonError<MutexGuard<'_, Extent>>> {
+    pub fn lock(&self) -> Result<MutexGuard<'_, Extent>, PoisonError<MutexGuard<'_, Extent>>> {
         self.handle.lock()
     }
 
-    pub fn read_block(&mut self, block_id: Address<Extent>) -> Result<EncryptedBlock, Error> {
+    pub fn read_block(&self, block_id: Address<Extent>) -> Result<EncryptedBlock, Error> {
         let mut extent = self.handle.lock()?;
         extent.seek(block_id);
         let mut buffer = EncryptedBlock::new();
@@ -47,8 +53,15 @@ impl ExtentHandle {
         Ok(buffer)
     }
 
-    pub fn write_block(&mut self, block_id: u64, block: EncryptedBlock) -> Result<(), Error> {
-        todo!()
+    pub fn write_block(
+        &self,
+        block_id: Address<Extent>,
+        block: EncryptedBlock,
+    ) -> Result<(), Error> {
+        let mut extent = self.handle.lock()?;
+        extent.seek(block_id);
+        extent.f.write_all(&*block)?;
+        Ok(())
     }
 }
 
@@ -63,6 +76,18 @@ impl Extent {
         self.block_usage_map.len() as u64
     }
 
+    /// Return the first unallocated block after ID
+    /// Mark the block as owned
+    pub fn alloc_first(&self, seed_id: Address<Extent>) -> Address<Extent> {
+        let n_blocks = self.n_blocks();
+        let mut index = *seed_id;
+        while self.is_allocated(index) {
+            index = (index + 1) % n_blocks;
+        }
+        self.reserve_block(index);
+        return index.into();
+    }
+
     /// Move self into a
     pub fn to_handle(self) -> ExtentHandle {
         ExtentHandle {
@@ -71,10 +96,21 @@ impl Extent {
         }
     }
 
+    pub fn write_block(
+        &mut self,
+        address: Address<Extent>,
+        block: EncryptedBlock,
+    ) -> Result<(), Error> {
+        self.seek(address);
+        self.f.write_all(&block);
+        Ok(())
+    }
+
     /// Seek to the given block id
     fn seek(&mut self, block_id: Address<Extent>) {
         // TODO handle failure
-        self.f.seek(SeekFrom::Start(*block_id * Block::size() as u64));
+        self.f
+            .seek(SeekFrom::Start(*block_id * Block::size() as u64));
     }
 
     /// Allocates a new block, marking it as in use
@@ -101,7 +137,11 @@ impl Extent {
 
     /// Creates a new extent, using a file as the backing source
     pub fn new(filename: &str, n_blocks: u64) -> Extent {
-        log::info!("Creating a new extent, {}, with {} blocks", filename, n_blocks);
+        log::info!(
+            "Creating a new extent, {}, with {} blocks",
+            filename,
+            n_blocks
+        );
         let f = File::create(filename).unwrap();
         let mut writer = BufWriter::new(f.try_clone().unwrap());
         for _ in 0..n_blocks {

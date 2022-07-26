@@ -1,19 +1,19 @@
-extern crate openssl;
 extern crate aes;
 extern crate bitvec;
 extern crate log;
+extern crate openssl;
 
 mod address;
 mod aspect;
 mod block;
-mod keyword;
 mod extent;
+mod keyword;
 
 pub use address::Address;
 pub use aspect::Aspect;
-pub use block::{EncryptedBlock, Block};
-pub use keyword::{Keyword, Key};
+pub use block::{Block, EncryptedBlock};
 pub use extent::{Extent, ExtentHandle};
+pub use keyword::{Key, Keyword};
 
 fn main() {
     env_logger::init();

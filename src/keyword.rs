@@ -52,7 +52,7 @@ impl Keyword {
         if index + length > self.hash.len() {
             return None;
         }
-        return Some(&self.hash[index..index+length]);
+        return Some(&self.hash[index..index + length]);
     }
     /// Return a int, read as an unsigned, big-endian integer starting at offset
     pub fn slice_int<T: FromByteSlice>(&self, offset: usize) -> Option<T> {
@@ -134,10 +134,9 @@ mod tests {
     fn fingerprint_hash() -> Keyword {
         let mut k = Keyword::new("a".to_string());
         k.hash = [
-            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-            0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+            0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+            0x1c, 0x1d, 0x1e, 0x1f,
         ];
         return k;
     }
@@ -148,14 +147,13 @@ mod tests {
         disp_hash("test1".to_string());
     }
 
-   #[test]
+    #[test]
     fn sha_test() {
         let k = Keyword::new("test".to_string());
         let expected = [
-            0x9f, 0x86, 0xd0, 0x81, 0x88, 0x4c, 0x7d, 0x65,
-            0x9a, 0x2f, 0xea, 0xa0, 0xc5, 0x5a, 0xd0, 0x15,
-            0xa3, 0xbf, 0x4f, 0x1b, 0x2b, 0x0b, 0x82, 0x2c,
-            0xd1, 0x5d, 0x6c, 0x15, 0xb0, 0xf0, 0x0a, 0x08
+            0x9f, 0x86, 0xd0, 0x81, 0x88, 0x4c, 0x7d, 0x65, 0x9a, 0x2f, 0xea, 0xa0, 0xc5, 0x5a,
+            0xd0, 0x15, 0xa3, 0xbf, 0x4f, 0x1b, 0x2b, 0x0b, 0x82, 0x2c, 0xd1, 0x5d, 0x6c, 0x15,
+            0xb0, 0xf0, 0x0a, 0x08,
         ];
         assert_eq!(k.hash, expected);
     }
@@ -272,23 +270,74 @@ mod tests {
     #[test]
     fn slice_u128() {
         let k = fingerprint_hash();
-        assert_eq!(0x000102030405060708090a0b0c0d0e0f, k.slice_int::<u128>(0x00).unwrap());
-        assert_eq!(0x0102030405060708090a0b0c0d0e0f10, k.slice_int::<u128>(0x01).unwrap());
-        assert_eq!(0x02030405060708090a0b0c0d0e0f1011, k.slice_int::<u128>(0x02).unwrap());
-        assert_eq!(0x030405060708090a0b0c0d0e0f101112, k.slice_int::<u128>(0x03).unwrap());
-        assert_eq!(0x0405060708090a0b0c0d0e0f10111213, k.slice_int::<u128>(0x04).unwrap());
-        assert_eq!(0x05060708090a0b0c0d0e0f1011121314, k.slice_int::<u128>(0x05).unwrap());
-        assert_eq!(0x060708090a0b0c0d0e0f101112131415, k.slice_int::<u128>(0x06).unwrap());
-        assert_eq!(0x0708090a0b0c0d0e0f10111213141516, k.slice_int::<u128>(0x07).unwrap());
-        assert_eq!(0x08090a0b0c0d0e0f1011121314151617, k.slice_int::<u128>(0x08).unwrap());
-        assert_eq!(0x090a0b0c0d0e0f101112131415161718, k.slice_int::<u128>(0x09).unwrap());
-        assert_eq!(0x0a0b0c0d0e0f10111213141516171819, k.slice_int::<u128>(0x0a).unwrap());
-        assert_eq!(0x0b0c0d0e0f101112131415161718191a, k.slice_int::<u128>(0x0b).unwrap());
-        assert_eq!(0x0c0d0e0f101112131415161718191a1b, k.slice_int::<u128>(0x0c).unwrap());
-        assert_eq!(0x0d0e0f101112131415161718191a1b1c, k.slice_int::<u128>(0x0d).unwrap());
-        assert_eq!(0x0e0f101112131415161718191a1b1c1d, k.slice_int::<u128>(0x0e).unwrap());
-        assert_eq!(0x0f101112131415161718191a1b1c1d1e, k.slice_int::<u128>(0x0f).unwrap());
-        assert_eq!(0x101112131415161718191a1b1c1d1e1f, k.slice_int::<u128>(0x10).unwrap());
+        assert_eq!(
+            0x000102030405060708090a0b0c0d0e0f,
+            k.slice_int::<u128>(0x00).unwrap()
+        );
+        assert_eq!(
+            0x0102030405060708090a0b0c0d0e0f10,
+            k.slice_int::<u128>(0x01).unwrap()
+        );
+        assert_eq!(
+            0x02030405060708090a0b0c0d0e0f1011,
+            k.slice_int::<u128>(0x02).unwrap()
+        );
+        assert_eq!(
+            0x030405060708090a0b0c0d0e0f101112,
+            k.slice_int::<u128>(0x03).unwrap()
+        );
+        assert_eq!(
+            0x0405060708090a0b0c0d0e0f10111213,
+            k.slice_int::<u128>(0x04).unwrap()
+        );
+        assert_eq!(
+            0x05060708090a0b0c0d0e0f1011121314,
+            k.slice_int::<u128>(0x05).unwrap()
+        );
+        assert_eq!(
+            0x060708090a0b0c0d0e0f101112131415,
+            k.slice_int::<u128>(0x06).unwrap()
+        );
+        assert_eq!(
+            0x0708090a0b0c0d0e0f10111213141516,
+            k.slice_int::<u128>(0x07).unwrap()
+        );
+        assert_eq!(
+            0x08090a0b0c0d0e0f1011121314151617,
+            k.slice_int::<u128>(0x08).unwrap()
+        );
+        assert_eq!(
+            0x090a0b0c0d0e0f101112131415161718,
+            k.slice_int::<u128>(0x09).unwrap()
+        );
+        assert_eq!(
+            0x0a0b0c0d0e0f10111213141516171819,
+            k.slice_int::<u128>(0x0a).unwrap()
+        );
+        assert_eq!(
+            0x0b0c0d0e0f101112131415161718191a,
+            k.slice_int::<u128>(0x0b).unwrap()
+        );
+        assert_eq!(
+            0x0c0d0e0f101112131415161718191a1b,
+            k.slice_int::<u128>(0x0c).unwrap()
+        );
+        assert_eq!(
+            0x0d0e0f101112131415161718191a1b1c,
+            k.slice_int::<u128>(0x0d).unwrap()
+        );
+        assert_eq!(
+            0x0e0f101112131415161718191a1b1c1d,
+            k.slice_int::<u128>(0x0e).unwrap()
+        );
+        assert_eq!(
+            0x0f101112131415161718191a1b1c1d1e,
+            k.slice_int::<u128>(0x0f).unwrap()
+        );
+        assert_eq!(
+            0x101112131415161718191a1b1c1d1e1f,
+            k.slice_int::<u128>(0x10).unwrap()
+        );
     }
 
     #[test]
@@ -301,4 +350,3 @@ mod tests {
         assert_eq!(k.slice_int::<u128>(0x11), None);
     }
 }
-

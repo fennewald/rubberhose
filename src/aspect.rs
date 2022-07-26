@@ -1,5 +1,5 @@
-use crate::{Key, Keyword, Block, ExtentHandle};
-use std::sync::{Arc, RwLock, Mutex};
+use crate::{Address, Block, Extent, ExtentHandle, Key, Keyword};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub enum Error {
     /// The seed could not be located in the seed block
@@ -11,16 +11,15 @@ pub enum Error {
 }
 
 pub struct Aspect {
-    extent: ExtentHandle,
+    extent_handle: ExtentHandle,
     keyword: Keyword,
-    blocks: Vec<u64>,
+    blocks: Vec<Address<Extent>>,
 }
-
 
 impl Aspect {
     pub fn new(extent: &ExtentHandle, keyword: Keyword) -> Aspect {
         Aspect {
-            extent: extent.clone(),
+            extent_handle: extent.clone(),
             keyword: keyword,
             blocks: Vec::new(),
         }
@@ -33,48 +32,52 @@ impl Aspect {
         todo!()
     }
 
+    pub fn read_block(&mut self, block_id: Address<Aspect>) -> Block {
+        let block_id = self.transform_block_id(block_id);
+        todo!()
+    }
+
     pub fn len(&self) -> u64 {
         self.blocks.len() as u64
     }
 
-    fn transform_block_id(&self, block_id: u64) -> u64 {
-        self.blocks[block_id as usize]
+    fn transform_block_id(&self, block_id: Address<Aspect>) -> Address<Extent> {
+        self.blocks[*block_id as usize]
     }
 
     /// Calculate the first possible seed index
-    fn seed_index(&self) -> u64 {
-        self.keyword.seed_index(self.extent.n_blocks())
+    fn seed_index(&self) -> Address<Extent> {
+        self.keyword
+            .seed_index(self.extent_handle.n_blocks())
+            .into()
     }
 
     pub fn write_seed_block(&mut self) {
-        let mut seed_index = self.seed_index();
-        let n_blocks = self.extent.n_blocks();
-        let mut extent = self.extent.lock().unwrap();
-
-        while extent.is_allocated(seed_index) {
-            log::info!("Skipping allocated block {} while searching for seed index", seed_index);
-            seed_index = (seed_index + 1) % n_blocks;
-        }
+        let mut extent = self.extent_handle.lock().unwrap();
+        let seed_index = extent.alloc_first(self.seed_index());
+        let seed_block = Block::new().encrypt(self.block_key(0.into()));
+        self.blocks.push(seed_index);
+        extent.write_block(seed_index, seed_block);
     }
 
     /// Return the block key for the given block id
-    pub fn block_key(&self, block_id: u64) -> Key {
+    pub fn block_key(&self, block_id: Address<Aspect>) -> Key {
         todo!()
     }
 
     /// Migrate a block from old_block_id to new_block_id
-    pub fn move_block(&mut self, old_block_id: u64, new_block_id: u64) -> Result<(), Error> {
-        log::info!("Moving block {} to {}", old_block_id, new_block_id);
-        let block_content = self.read_block(old_block_id)?;
-        self.write_block(new_block_id, block_content);
+    pub fn move_block(
+        &mut self,
+        old_block_id: Address<Extent>,
+        new_block_id: Address<Extent>,
+    ) -> Result<(), Error> {
+        //log::info!("Moving block {} to {}", old_block_id, new_block_id);
+        //let block_content = self.read_block(old_block_id)?;
+        //self.write_block(new_block_id, block_content);
         Ok(())
     }
 
     fn write_block(&mut self, block_id: u64, content: Block) -> Result<(), Error> {
-        todo!()
-    }
-
-    fn read_block(&self, block_id: u64) -> Result<Block, Error> {
         todo!()
     }
 }

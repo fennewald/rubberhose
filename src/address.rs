@@ -1,13 +1,19 @@
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use std::fmt;
 
 pub struct Address<T> {
-    val: u64,
+    pub val: u64,
     _marker: PhantomData<*const T>,
 }
 
 impl<T> fmt::Debug for Address<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Addr:({}){}", std::any::type_name::<T>(), self.val)
+    }
+}
+
+impl<T> fmt::Display for Address<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Addr:({}){}", std::any::type_name::<T>(), self.val)
     }

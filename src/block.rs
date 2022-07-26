@@ -1,7 +1,8 @@
+use crate::{Address, Extent, Key};
+use aes::{Aes256, NewBlockCipher};
 use std::fmt;
-use std::mem::{self, size_of};
+use std::mem::size_of;
 use std::ops::{Deref, DerefMut};
-use crate::Key;
 
 const BLOCK_SIZE: usize = 1024;
 const BLOCK_DATA_SIZE: usize = BLOCK_SIZE - size_of::<BlockHeader>();
@@ -40,7 +41,7 @@ impl fmt::Debug for EncryptedBlock {
 
 #[repr(C)]
 pub struct BlockHeader {
-    next_sector_id: u64,
+    next_sector_id: Address<Extent>,
     checksum: u64,
 }
 
@@ -51,16 +52,16 @@ pub struct Block {
 }
 
 impl Block {
-    fn new() -> Block {
+    pub fn new() -> Block {
         let header = BlockHeader {
-            next_sector_id: 0,
+            next_sector_id: 0xffff.into(),
             checksum: 0,
         };
         let mut block = Block {
             header: header,
             data: [0; BLOCK_DATA_SIZE],
         };
-        block.calculate_checksum();
+        block.update_checksum();
         return block;
     }
 
@@ -79,11 +80,16 @@ impl Block {
         self.calculate_checksum() == self.header.checksum
     }
 
-    pub fn encrypt(self) -> EncryptedBlock {
-        todo!()
+    pub fn encrypt(self, key: Key) -> EncryptedBlock {
+        let cipher = Aes256::new(key);
+        let mut buffer: EncryptedBlock = unsafe { std::mem::transmute(self) };
+        cipher.encrypt_block(&mut buffer);
+        return buffer;
     }
 
-    pub const fn size() -> usize { BLOCK_SIZE }
+    pub const fn size() -> usize {
+        BLOCK_SIZE
+    }
 }
 
 /// Calculate the crc for some slice
@@ -93,7 +99,7 @@ fn crc64(data: &[u8]) -> u64 {
     for b in data {
         let t = (crc >> 56) as u8 ^ b;
         crc = TABLE[t as usize] ^ (crc << 8);
-    };
+    }
     return crc;
 }
 
@@ -125,4 +131,14 @@ const fn gen_crc_table() -> [u64; 256] {
     }
 
     return table;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn crc_sanity() {
+        assert_eq!(crc64(&[0x00, 0x01, 0x02, 0x04]), 8513814196102790297);
+    }
 }
