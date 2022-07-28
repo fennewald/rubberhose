@@ -1,3 +1,4 @@
+use crate::device::BlockDevice;
 use crate::{Address, Aspect, Block, EncryptedBlock, Keyword};
 use bitvec::prelude::BitVec;
 use std::fs::File;
@@ -37,7 +38,8 @@ impl ExtentHandle {
     /// Create a new aspect on disk
     pub fn create_aspect(&self, keyword: Keyword) -> Aspect {
         let mut aspect = Aspect::new(&self, keyword);
-        aspect.write_seed_block()
+        aspect.write_seed_block();
+        return aspect;
     }
 
     /// Return a handle to the underlying extent object
@@ -65,15 +67,28 @@ impl ExtentHandle {
     }
 }
 
-pub struct Extent {
+pub struct Extent<T: BlockDevice> {
     block_usage_map: BitVec,
-    f: File,
+    device: T,
 }
 
-impl Extent {
-    /// Get the number of blocks
+impl<T> Extent<T> {
     pub fn n_blocks(&self) -> u64 {
-        self.block_usage_map.len() as u64
+        self.device.n_sectors()
+    }
+
+    pub fn read_block(&mut self, block_index: u64) -> Block {
+        self.device.read_sector(block_index)
+    }
+
+    pub fn write_block(&mut self, block_index: u64, block: &Block) {
+        self.device.write_block(block_index, block)
+    }
+
+    // Allocator functions
+    /// Mark the given block as deallocated
+    pub fn deallocate_block(&mut self, block_index: u64) {
+
     }
 
     /// Return the first unallocated block after ID
@@ -84,7 +99,7 @@ impl Extent {
         while self.is_allocated(index) {
             index = (index + 1) % n_blocks;
         }
-        self.reserve_block(index);
+        //self.reserve_block(index);
         return index.into();
     }
 

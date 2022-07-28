@@ -7,6 +7,14 @@ pub struct Address<T> {
     _marker: PhantomData<*const T>,
 }
 
+impl<T> Copy for Address<T> { }
+
+impl<T> Clone for Address<T> {
+    fn clone(&self) -> Address<T> {
+        *self
+    }
+}
+
 impl<T> fmt::Debug for Address<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Addr:({}){}", std::any::type_name::<T>(), self.val)
@@ -15,7 +23,7 @@ impl<T> fmt::Debug for Address<T> {
 
 impl<T> fmt::Display for Address<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Addr:({}){}", std::any::type_name::<T>(), self.val)
+        write!(f, "{}", self.val)
     }
 }
 

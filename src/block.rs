@@ -1,5 +1,5 @@
 use crate::{Address, Extent, Key};
-use aes::{Aes256, NewBlockCipher};
+use aes::{Aes256, NewBlockCipher, BlockEncrypt};
 use std::fmt;
 use std::mem::size_of;
 use std::ops::{Deref, DerefMut};
@@ -81,10 +81,11 @@ impl Block {
     }
 
     pub fn encrypt(self, key: Key) -> EncryptedBlock {
-        let cipher = Aes256::new(key);
-        let mut buffer: EncryptedBlock = unsafe { std::mem::transmute(self) };
-        cipher.encrypt_block(&mut buffer);
-        return buffer;
+        //let cipher = Aes256::new(key);
+        //let mut buffer: EncryptedBlock = unsafe { std::mem::transmute(self) };
+        //cipher.encrypt_block(&mut buffer);
+        //return buffer;
+        todo!()
     }
 
     pub const fn size() -> usize {
