@@ -1,9 +1,11 @@
-use crate::device::BlockDevice;
-use crate::{Address, Aspect, Block, EncryptedBlock, Keyword};
-use bitvec::prelude::BitVec;
-use std::fs::File;
+use crate::device::{RAMDisk, BlockDevice};
+use crate::{Aspect, Block, Keyword, EncryptedBlock};
+use bitvec::prelude::*;
+use std::fmt;
 use std::io::{self, prelude::*, BufWriter, SeekFrom};
 use std::sync::{self, Arc, Mutex, MutexGuard, PoisonError};
+
+type Device = RAMDisk;
 
 #[derive(Debug)]
 pub enum Error {
@@ -25,8 +27,14 @@ impl From<io::Error> for Error {
 
 #[derive(Clone)]
 pub struct ExtentHandle {
-    handle: Arc<Mutex<Extent>>,
+    handle: Arc<Mutex<Extent<Device>>>,
     n_blocks: u64,
+}
+
+impl fmt::Debug for ExtentHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.handle.lock().unwrap().fmt(f)
+    }
 }
 
 impl ExtentHandle {
@@ -42,142 +50,76 @@ impl ExtentHandle {
         return aspect;
     }
 
-    /// Return a handle to the underlying extent object
-    pub fn lock(&self) -> Result<MutexGuard<'_, Extent>, PoisonError<MutexGuard<'_, Extent>>> {
+    // Return a handle to the underlying extent object
+    pub fn lock(&self) -> Result<MutexGuard<'_, Extent<Device>>, PoisonError<MutexGuard<'_, Extent<Device>>>> {
         self.handle.lock()
-    }
-
-    pub fn read_block(&self, block_id: Address<Extent>) -> Result<EncryptedBlock, Error> {
-        let mut extent = self.handle.lock()?;
-        extent.seek(block_id);
-        let mut buffer = EncryptedBlock::new();
-        extent.f.read_exact(&mut buffer)?;
-        Ok(buffer)
-    }
-
-    pub fn write_block(
-        &self,
-        block_id: Address<Extent>,
-        block: EncryptedBlock,
-    ) -> Result<(), Error> {
-        let mut extent = self.handle.lock()?;
-        extent.seek(block_id);
-        extent.f.write_all(&*block)?;
-        Ok(())
     }
 }
 
-pub struct Extent<T: BlockDevice> {
+pub struct Extent<T: BlockDevice + fmt::Debug> {
     block_usage_map: BitVec,
     device: T,
 }
 
-impl<T> Extent<T> {
-    pub fn n_blocks(&self) -> u64 {
-        self.device.n_sectors()
+impl<T: BlockDevice + fmt::Debug> fmt::Debug for Extent<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Extent:")?;
+        writeln!(f, "    Block Usage map: {}", self.block_usage_map)?;
+        writeln!(f, "    {:?}", self.device)?;
+        Ok(())
     }
+}
 
-    pub fn read_block(&mut self, block_index: u64) -> Block {
-        self.device.read_sector(block_index)
-    }
-
-    pub fn write_block(&mut self, block_index: u64, block: &Block) {
-        self.device.write_block(block_index, block)
-    }
-
-    // Allocator functions
-    /// Mark the given block as deallocated
-    pub fn deallocate_block(&mut self, block_index: u64) {
-
-    }
-
-    /// Return the first unallocated block after ID
-    /// Mark the block as owned
-    pub fn alloc_first(&self, seed_id: Address<Extent>) -> Address<Extent> {
-        let n_blocks = self.n_blocks();
-        let mut index = *seed_id;
-        while self.is_allocated(index) {
-            index = (index + 1) % n_blocks;
-        }
-        //self.reserve_block(index);
-        return index.into();
-    }
-
-    /// Move self into a
+impl Extent<Device> {
+    /// Move self into a handle
     pub fn to_handle(self) -> ExtentHandle {
         ExtentHandle {
             n_blocks: self.n_blocks(),
             handle: Arc::new(Mutex::new(self)),
         }
     }
+}
 
-    pub fn write_block(
-        &mut self,
-        address: Address<Extent>,
-        block: EncryptedBlock,
-    ) -> Result<(), Error> {
-        self.seek(address);
-        self.f.write_all(&block);
-        Ok(())
-    }
-
-    /// Seek to the given block id
-    fn seek(&mut self, block_id: Address<Extent>) {
-        // TODO handle failure
-        self.f
-            .seek(SeekFrom::Start(*block_id * Block::size() as u64));
-    }
-
-    /// Allocates a new block, marking it as in use
-    /// At this point, a record needs to be written to the linked list to make
-    /// this valid
-    pub fn alloc_block(&mut self) -> u64 {
-        todo!()
-    }
-
-    /// Reserve the given block, returning Ok(()) on succses
-    pub fn reserve_block(&mut self, block_id: u64) -> Result<(), ()> {
-        if self.block_usage_map[block_id as usize] {
-            Err(())
-        } else {
-            self.block_usage_map.set(block_id as usize, true);
-            Ok(())
-        }
-    }
-
-    /// Test if the given block is currently allocated
-    pub fn is_allocated(&self, block_id: u64) -> bool {
-        self.block_usage_map[block_id as usize]
-    }
-
-    /// Creates a new extent, using a file as the backing source
-    pub fn new(filename: &str, n_blocks: u64) -> Extent {
-        log::info!(
-            "Creating a new extent, {}, with {} blocks",
-            filename,
-            n_blocks
-        );
-        let f = File::create(filename).unwrap();
-        let mut writer = BufWriter::new(f.try_clone().unwrap());
-        for _ in 0..n_blocks {
-            let mut buffer = [0; Block::size()];
-            openssl::rand::rand_bytes(&mut buffer).unwrap();
-            writer.write(&buffer).unwrap();
-        }
-        writer.flush().unwrap();
+impl<T: BlockDevice + fmt::Debug> Extent<T> {
+    pub fn new(device: T) -> Extent<T> {
         Extent {
-            block_usage_map: BitVec::with_capacity(n_blocks as usize),
-            f: f,
+            block_usage_map: bitvec![0; device.n_sectors() as usize],
+            device,
         }
     }
 
-    /// Load an extent from a file
-    pub fn load(filename: &str) -> Extent {
-        let f = File::open(filename).unwrap();
-        let length = f.metadata().unwrap().len();
-        Extent {
-            block_usage_map: BitVec::new(),
-            f: f,
+    pub fn n_blocks(&self) -> u64 {
+        self.device.n_sectors()
+    }
+
+    pub fn read_block(&mut self, block_index: u64) -> EncryptedBlock {
+        self.device.read_sector(block_index).into()
+    }
+
+    pub fn write_block(&mut self, block_index: u64, block: &EncryptedBlock) {
+        self.device.write_sector(block_index, block.as_ref())
+    }
+
+    // Allocator functions
+    /// Mark the given block as deallocated
+    pub fn deallocate_block(&mut self, block_index: u64) {
+        self.block_usage_map.set(block_index as usize, false)
+    }
+
+    /// Mark a block as owned
+    pub fn alloc_block(&mut self, block_index: u64) {
+        self.block_usage_map.set(block_index as usize, true)
+    }
+
+    /// Mark the first block after seed
+    pub fn alloc_next_block(&mut self, block_index: u64) -> u64 {
+        let mut index = block_index;
+        loop {
+            if !self.block_usage_map[index as usize] {
+                self.alloc_block(index);
+                return index;
+            }
+            index = (index + 1) % self.device.n_sectors();
         }
     }
 }

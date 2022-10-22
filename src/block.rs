@@ -1,37 +1,48 @@
-use crate::{Address, Extent, Key};
+use aes::cipher::generic_array::GenericArray;
 use aes::{Aes256, NewBlockCipher, BlockEncrypt};
 use std::fmt;
 use std::mem::size_of;
 use std::ops::{Deref, DerefMut};
 
+use crate::crc::crc64;
+use crate::{Extent, Key};
+
 const BLOCK_SIZE: usize = 1024;
 const BLOCK_DATA_SIZE: usize = BLOCK_SIZE - size_of::<BlockHeader>();
 
-#[repr(align(16))]
-pub struct EncryptedBlock([u8; BLOCK_SIZE]);
+#[repr(transparent)]
+#[derive(Clone,Debug,Eq,PartialEq)]
+pub struct RawBlock([u8; BLOCK_SIZE]);
 
+impl RawBlock {
+}
+
+/*
 impl EncryptedBlock {
     pub fn new() -> EncryptedBlock {
-        EncryptedBlock([0; BLOCK_SIZE]) // TODO add uninit version
+        [0; BLOCK_SIZE] // TODO add uninit version
     }
     pub fn decrypt(self, key: Key) -> Block {
         todo!()
     }
 }
+*/
 
-impl Deref for EncryptedBlock {
-    type Target = [u8];
+pub struct EncryptedBlock([u8; BLOCK_SIZE]);
 
-    fn deref(&self) -> &Self::Target {
+impl From<Sector> for EncryptedBlock {
+    fn from(sector: Sector) -> EncryptedBlock {
+        EncryptedBlock(sector.into())
+    }
+}
+
+/*
+impl AsRef<Sector> for EncryptedBlock {
+    fn as_ref(&self) -> &Sector {
         &self.0
     }
 }
-
-impl DerefMut for EncryptedBlock {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+*/
 
 impl fmt::Debug for EncryptedBlock {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -41,7 +52,7 @@ impl fmt::Debug for EncryptedBlock {
 
 #[repr(C)]
 pub struct BlockHeader {
-    next_sector_id: Address<Extent>,
+    next_sector_id: u64,
     checksum: u64,
 }
 
@@ -54,7 +65,7 @@ pub struct Block {
 impl Block {
     pub fn new() -> Block {
         let header = BlockHeader {
-            next_sector_id: 0xffff.into(),
+            next_sector_id: 0xffff,
             checksum: 0,
         };
         let mut block = Block {
@@ -81,11 +92,12 @@ impl Block {
     }
 
     pub fn encrypt(self, key: Key) -> EncryptedBlock {
-        //let cipher = Aes256::new(key);
-        //let mut buffer: EncryptedBlock = unsafe { std::mem::transmute(self) };
-        //cipher.encrypt_block(&mut buffer);
-        //return buffer;
-        todo!()
+        let key = GenericArray::from(key);
+        let cipher = Aes256::new(&key);
+        let mut buffer: EncryptedBlock = unsafe { std::mem::transmute(self) };
+        let generic = GenericArray::from_mut_slice(&mut buffer.0);
+        cipher.encrypt_block(generic);
+        return buffer;
     }
 
     pub const fn size() -> usize {
@@ -93,50 +105,14 @@ impl Block {
     }
 }
 
-/// Calculate the crc for some slice
-fn crc64(data: &[u8]) -> u64 {
-    const TABLE: [u64; 256] = gen_crc_table();
-    let mut crc: u64 = 0;
-    for b in data {
-        let t = (crc >> 56) as u8 ^ b;
-        crc = TABLE[t as usize] ^ (crc << 8);
-    }
-    return crc;
-}
-
-/// Generates a lookup table for crc calculation
-// Adapted from the linux kernel lib/crc64.c
-const fn gen_crc_table() -> [u64; 256] {
-    const ECMA_POLY: u64 = 0x42F0E1EBA9EA3693;
-    const ROCKSOFT_POLY: u64 = 0x9A6C9329AC4BC9B5;
-    let mut table = [0; 256];
-    let mut crc: u64;
-    let mut c: u64;
-    let mut i = 0;
-
-    while i < 256 {
-        crc = 0;
-        c = i << 56;
-        let mut j = 0;
-        while j < 8 {
-            if (crc ^ c) & 0x8000000000000000 != 0 {
-                crc = (crc << 1) ^ ECMA_POLY;
-            } else {
-                crc <<= 1;
-            }
-            c <<= 1;
-            j += 1;
-        }
-        table[i as usize] = crc;
-        i += 1;
-    }
-
-    return table;
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn block_size() {
+        assert_eq!(BLOCK_SIZE, std::mem::size_of::<Block>())
+    }
 
     #[test]
     fn crc_sanity() {

@@ -28,7 +28,12 @@ impl Keyword {
     }
 
     pub fn seed_index(&self, n_blocks: u64) -> u64 {
-        self.lower_64() % n_blocks
+        (
+            self.slice_int::<u64>(0).unwrap() ^
+            self.slice_int::<u64>(8).unwrap() ^
+            self.slice_int::<u64>(16).unwrap() ^
+            self.slice_int::<u64>(24).unwrap()
+        ) % n_blocks
     }
 
     /// A pretty form of the hash

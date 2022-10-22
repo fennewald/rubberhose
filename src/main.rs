@@ -3,22 +3,30 @@ extern crate bitvec;
 extern crate log;
 extern crate openssl;
 
-//mod address;
-//mod aspect;
-//mod block;
+mod aspect;
+mod crc;
+mod block;
 mod device;
-//mod extent;
-//mod keyword;
+mod extent;
+mod keyword;
 
-//pub use address::Address;
-//pub use aspect::Aspect;
-//pub use block::{Block, EncryptedBlock};
-use device::BlockDevice;
-//pub use extent::{Extent, ExtentHandle};
-//pub use keyword::{Key, Keyword};
+#[cfg(test)]
+mod tests;
+
+use aspect::Aspect;
+use block::{Block, RawBlock};
+use device::{BlockDevice, RAMDisk};
+use extent::{Extent, ExtentHandle};
+use keyword::{Key, Keyword};
 
 fn main() {
     env_logger::init();
-    let mut image = device::RAMDisk::new(1000000);
-    println!("{:?}", image);
+    let mut disk = RAMDisk::new(8);
+    disk.read_sector(0);
+    //disk.write_sector(0, &Sector::new_rand());
+    let mut e = Extent::new(disk).to_handle();
+    log::info!("Disk view: {:?}", e);
+    let a = e.create_aspect(Keyword::new("Hello".to_string()));
+    log::info!("Disk view: {:?}", e);
 }
+
